@@ -30,6 +30,74 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.data.Track
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+
+data class LyricLine(val text: String, val timestampMs: Long)
+
+fun parseDurationToMs(durationStr: String): Long {
+    return try {
+        val parts = durationStr.split(":")
+        val mins = parts[0].toLong()
+        val secs = parts[1].toLong()
+        (mins * 60 + secs) * 1000
+    } catch (e: Exception) {
+        0L
+    }
+}
+
+fun getLyricsForTrack(trackId: String): List<LyricLine> {
+    return when (trackId) {
+        "track_1" -> listOf(
+            LyricLine("Cruising through the neon city lights...", 0L),
+            LyricLine("Bassline kicking, we own the night...", 8000L),
+            LyricLine("Feel the pulse, hear the crowd scream our name...", 16000L),
+            LyricLine("Under the streetlights, it's never the same...", 25000L),
+            LyricLine("This is our kingdom, the Troupe's in the game...", 35000L),
+            LyricLine("Neon dreams are taking over my brain...", 48000L),
+            LyricLine("Cruising higher, overriding all the pain...", 58000L),
+            LyricLine("[Synthesizer Beats Outro]", 70000L)
+        )
+        "track_2" -> listOf(
+            LyricLine("Quiet resonance on a midnight cruise...", 0L),
+            LyricLine("Watching the starlight, we got nothing to lose...", 12000L),
+            LyricLine("Drifting away into cosmic dust...", 24000L),
+            LyricLine("In these electronic frequencies, we trust...", 36000L),
+            LyricLine("Warm retro keys floating in the breeze...", 48000L),
+            LyricLine("Resting your head, letting go with absolute ease...", 62000L)
+        )
+        "track_3" -> listOf(
+            LyricLine("Entering the deep dark shadow realm...", 0L),
+            LyricLine("Spanning systems, taking over the helm...", 9000L),
+            LyricLine("Heavy 808s bumping through the floor...", 18000L),
+            LyricLine("Hear the echoes knocking on the studio door...", 28000L),
+            LyricLine("We keep it real, street vibes forevermore...", 38000L),
+            LyricLine("NFR Troupe records making history soar...", 48000L)
+        )
+        "track_4" -> listOf(
+            LyricLine("Welcome to the neon grid of Cyber Tokyo...", 0L),
+            LyricLine("Synthwave speedway, watch the colors glow...", 10000L),
+            LyricLine("Heartbeat racing, driving down the cyber line...", 20000L),
+            LyricLine("Perfect high-fidelity, streaming out in time...", 31000L),
+            LyricLine("Analog warm sounds blended with digital design...", 42000L),
+            LyricLine("Step into the future, everything is aligned...", 53000L)
+        )
+        "track_5" -> listOf(
+            LyricLine("Sunrise glow on the gold horizon...", 0L),
+            LyricLine("Acoustic soul, no need for disguising...", 11000L),
+            LyricLine("Warm acoustic chords healing all the scars...", 22000L),
+            LyricLine("Gazing upwards, underneath a million stars...", 34000L),
+            LyricLine("Breathe in the morning, let the rhythm restart...", 46000L),
+            LyricLine("Spanning world systems, connected from the heart...", 58000L)
+        )
+        else -> listOf(
+            LyricLine("Streaming high-quality NFR Troupe audio...", 0L),
+            LyricLine("Premium 320kbps streams on Hit Tracks...", 10000L),
+            LyricLine("Curating the perfect soundtrack with AI Muse...", 20000L),
+            LyricLine("Collaborative workspace and offline vaults enabled...", 30000L)
+        )
+    }
+}
 
 @Composable
 fun FullPlayerScreen(
@@ -42,6 +110,22 @@ fun FullPlayerScreen(
     val progress by viewModel.playbackProgress.collectAsStateWithLifecycle()
     val timeString by viewModel.currentTimeString.collectAsStateWithLifecycle()
     val streamingQuality by viewModel.streamingQuality.collectAsStateWithLifecycle()
+
+    var showLyrics by remember { mutableStateOf(false) }
+    val lyricsList = remember(track.id) { getLyricsForTrack(track.id) }
+    val currentMs = (progress * parseDurationToMs(track.duration)).toLong()
+    val listState = rememberLazyListState()
+
+    val activeIndex = remember(currentMs, lyricsList) {
+        val index = lyricsList.indexOfLast { currentMs >= it.timestampMs }
+        if (index == -1) 0 else index
+    }
+
+    LaunchedEffect(activeIndex, showLyrics) {
+        if (showLyrics && lyricsList.isNotEmpty()) {
+            listState.animateScrollToItem(activeIndex)
+        }
+    }
 
     // Infinite rotation for rotating Vinyl
     val infiniteTransition = rememberInfiniteTransition(label = "Vinyl Rotation")
@@ -137,33 +221,113 @@ fun FullPlayerScreen(
             }
         }
 
-        // Rotating Vinyl Disk Section
+        // Rotating Vinyl Disk Section or Synchronized Lyrics Board
         Box(
             modifier = Modifier
-                .padding(vertical = 24.dp)
-                .size(260.dp)
-                .clip(CircleShape)
-                .background(Color.Black)
-                .border(6.dp, Color(0xFF1E1E2A), CircleShape),
+                .padding(vertical = 12.dp)
+                .fillMaxWidth()
+                .height(280.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFF131217))
+                .border(1.5.dp, Color(0xFF2B2930), RoundedCornerShape(16.dp))
+                .clickable { showLyrics = !showLyrics }
+                .testTag("lyrics_or_vinyl_container"),
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = track.coverUrl,
-                contentDescription = track.title,
-                modifier = Modifier
-                    .fillMaxSize(0.85f)
-                    .clip(CircleShape)
-                    .rotate(if (isPlaying) rotationAngle else 0f),
-                contentScale = ContentScale.Crop
-            )
+            if (!showLyrics) {
+                // Vinyl View
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(210.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black)
+                            .border(6.dp, Color(0xFF2B2930), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = track.coverUrl,
+                            contentDescription = track.title,
+                            modifier = Modifier
+                                .fillMaxSize(0.85f)
+                                .clip(CircleShape)
+                                .rotate(if (isPlaying) rotationAngle else 0f),
+                            contentScale = ContentScale.Crop
+                        )
 
-            // Vinyl center dot
-            Box(
-                modifier = Modifier
-                    .size(45.dp)
-                    .background(Color.Black, CircleShape)
-                    .border(2.dp, primaryColor, CircleShape)
-            )
+                        // Vinyl center dot
+                        Box(
+                            modifier = Modifier
+                                .size(35.dp)
+                                .background(Color.Black, CircleShape)
+                                .border(2.dp, primaryColor, CircleShape)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "🎵 Tap for Synced Lyrics",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = primaryColor.copy(alpha = 0.8f)
+                    )
+                }
+            } else {
+                // Synced Scrollable Lyrics View
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        item { Spacer(modifier = Modifier.height(100.dp)) }
+                        
+                        itemsIndexed(lyricsList) { idx, lyric ->
+                            val isActive = idx == activeIndex
+                            val fontScale by animateFloatAsState(if (isActive) 1.15f else 1.0f)
+                            val color = if (isActive) primaryColor else Color.White.copy(alpha = 0.45f)
+                            val weight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium
+                            
+                            Text(
+                                text = lyric.text,
+                                fontSize = 15.sp,
+                                fontWeight = weight,
+                                color = color,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .graphicsLayer {
+                                        scaleX = fontScale
+                                        scaleY = fontScale
+                                    }
+                                    .padding(horizontal = 12.dp)
+                            )
+                        }
+
+                        item { Spacer(modifier = Modifier.height(100.dp)) }
+                    }
+
+                    // Floating indicator to go back
+                    Text(
+                        text = "🎨 Tap for Vinyl Art",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White.copy(alpha = 0.4f),
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+            }
         }
 
         // Track Information & Social Share Sheet

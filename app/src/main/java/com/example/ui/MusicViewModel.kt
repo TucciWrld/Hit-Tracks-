@@ -299,6 +299,16 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         if (message.isBlank()) return
         viewModelScope.launch {
             repository.sendMessage(recipient, message)
+            if (recipient == "AI Muse") {
+                delay(800)
+                val response = com.example.api.GeminiChatBot.getAiChatResponse(message)
+                val aiMsg = ChatMessage(
+                    senderName = "AI Muse",
+                    recipientName = "You",
+                    message = response
+                )
+                musicDao.insertMessage(aiMsg)
+            }
         }
     }
 

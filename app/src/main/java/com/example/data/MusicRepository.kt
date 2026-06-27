@@ -166,6 +166,13 @@ class MusicRepository(private val musicDao: MusicDao, private val context: Conte
         if (currentMessages.isEmpty()) {
             musicDao.insertMessage(
                 ChatMessage(
+                    senderName = "AI Muse",
+                    recipientName = "You",
+                    message = "Yo! I'm your AI Muse. Ask me anything about music curations, NFR Troupe bangers, or dynamic playlists. Type a message below and let's craft a custom vibe together!"
+                )
+            )
+            musicDao.insertMessage(
+                ChatMessage(
                     senderName = "NFR Troupe",
                     recipientName = "Emma769933",
                     message = "Yo! Welcome to Hit Tracks, powered by NFR Troupe label. Check out our collaborative playlist and stream the official high-quality track streams! Let us know what you think."

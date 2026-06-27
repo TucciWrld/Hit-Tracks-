@@ -133,3 +133,89 @@ object GeminiMoodRecommender {
         }
     }
 }
+
+object GeminiChatBot {
+
+    private val moshi = Moshi.Builder()
+        .addLast(KotlinJsonAdapterFactory())
+        .build()
+
+    suspend fun getAiChatResponse(userMessage: String): String = withContext(Dispatchers.IO) {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") {
+            return@withContext getLocalFallbackChatResponse(userMessage)
+        }
+
+        val prompt = "You are 'AI Muse', an exclusive, cool AI music assistant, record label co-curator, and expert DJ for the Hit Tracks app. Respond to this message in a friendly, witty, brief and cool style (max 2-3 sentences): \"$userMessage\". Keep your advice connected to hip hop, lo-fi, synthwave, or trap music styles typical of the NFR Troupe Label. Return a pure text response, with absolutely no markdown syntax, no backticks, and no bullet points. Be direct, warm, and highly professional."
+
+        val requestMap = mapOf(
+            "contents" to listOf(
+                mapOf(
+                    "parts" to listOf(
+                        mapOf("text" to prompt)
+                    )
+                )
+            )
+        )
+
+        val requestAdapter = moshi.adapter(Map::class.java)
+        val jsonRequest = requestAdapter.toJson(requestMap)
+
+        val client = OkHttpClient.Builder()
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val body = jsonRequest.toRequestBody(mediaType)
+
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
+
+        val httpRequest = Request.Builder()
+            .url(url)
+            .post(body)
+            .build()
+
+        try {
+            client.newCall(httpRequest).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext getLocalFallbackChatResponse(userMessage)
+                }
+
+                val responseBody = response.body?.string() ?: ""
+                val responseAdapter = moshi.adapter(Map::class.java)
+                val parsedResponse = responseAdapter.fromJson(responseBody)
+
+                val candidates = parsedResponse?.get("candidates") as? List<*>
+                val firstCandidate = candidates?.firstOrNull() as? Map<*, *>
+                val content = firstCandidate?.get("content") as? Map<*, *>
+                val parts = content?.get("parts") as? List<*>
+                val firstPart = parts?.firstOrNull() as? Map<*, *>
+                val textOutput = firstPart?.get("text") as? String
+
+                textOutput?.trim() ?: getLocalFallbackChatResponse(userMessage)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            getLocalFallbackChatResponse(userMessage)
+        }
+    }
+
+    private fun getLocalFallbackChatResponse(userMessage: String): String {
+        val lower = userMessage.lowercase()
+        return when {
+            lower.contains("recommend") || lower.contains("song") || lower.contains("track") -> {
+                "Oh, definitely stream 'Neon Dreams' by NFR Troupe! It features incredible 808 sub-bass, or if you are in a laidback mood, put on 'Midnight Cruise' by Cosmic Beats. Perfect vibe for high-quality audio streaming!"
+            }
+            lower.contains("hi") || lower.contains("hello") || lower.contains("yo") -> {
+                "Yo! I'm AI Muse, your personal music assistant for Hit Tracks. Need any fresh playlist ideas, artist lore, or NFR Troupe recommendations? Ask away!"
+            }
+            lower.contains("playlist") -> {
+                "For playlists, check out 'Road Trip Mix' or use our 'AI Recommendation' tab to generate a custom Late Night Flow based on any prompt!"
+            }
+            else -> {
+                "That's high-level taste right there. I love how you're thinking about music. In the NFR Troupe style, everything is about that crisp production and rich bass depth. Anything else you want to explore?"
+            }
+        }
+    }
+}

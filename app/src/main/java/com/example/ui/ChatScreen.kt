@@ -34,10 +34,11 @@ import java.util.Locale
 @Composable
 fun ChatScreen(viewModel: MusicViewModel, primaryColor: Color) {
     val messages by viewModel.allMessages.collectAsStateWithLifecycle()
-    var selectedContact by remember { mutableStateOf("NFR Troupe") }
+    var selectedContact by remember { mutableStateOf("AI Muse") }
     var typedMessage by remember { mutableStateOf("") }
 
     val contacts = listOf(
+        Pair("AI Muse", "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=300&q=80"),
         Pair("NFR Troupe", "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80"),
         Pair("SoundMage", "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80"),
         Pair("Emma769933", "https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?auto=format&fit=crop&w=300&q=80")
@@ -185,7 +186,7 @@ fun ChatScreen(viewModel: MusicViewModel, primaryColor: Color) {
 
                             Card(
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isOwn) primaryColor else Color(0xFF1E1E2A)
+                                    containerColor = if (isOwn) primaryColor else Color(0xFF2B2930)
                                 ),
                                 shape = RoundedCornerShape(
                                     topStart = 12.dp,
